@@ -11,7 +11,7 @@ bing="www.bing.com"
 # The mkt parameter determines which Bing market you would like to
 # obtain your images from.
 # Valid values are: en-US, zh-CN, ja-JP, en-AU, en-UK, de-DE, en-NZ, en-CA.
-mkt="zh-CN"
+mkt="en-UK"
 
 # The idx parameter determines where to start from. 0 is the current day,
 # 1 the previous day, etc.
@@ -91,6 +91,14 @@ detectDE()
       esac
     fi
 
+    if [ x"$DE" = x"" ]; then
+      case "${OSTYPE}" in
+         darwin*)
+           DE=quartz;
+           ;;
+      esac
+    fi
+
     if [ x"$DE" = x"gnome" ]; then
       # gnome-default-applications-properties is only available in GNOME 2.x
       # but not in GNOME 3.x
@@ -101,18 +109,18 @@ detectDE()
 # Download the highest resolution
 while true; do
 
-    TOMORROW=$(date --date="tomorrow" +%Y-%m-%d)
-    TOMORROW=$(date --date="$TOMORROW 00:10:00" +%s)
-    
+    TOMORROW=`date -j 0010 +%s 2> /dev/null` || TOMORROW=`date --date="00:10" +%s 2> /dev/null`
+    TOMORROW=$(($TOMORROW + 86400))
+
     for picRes in _1920x1200 _1366x768 _1280x720 _1024x768; do
 
     # Extract the relative URL of the Bing pic of the day from
     # the XML data retrieved from xmlURL, form the fully qualified
     # URL for the pic of the day, and store it in $picURL
-    picURL=$bing$(echo $(curl -s $xmlURL) | grep -oP "<urlBase>(.*)</urlBase>" | cut -d ">" -f 2 | cut -d "<" -f 1)$picRes$picExt
+    picURL=$bing$(echo $(curl -s $xmlURL) | grep -o "<urlBase>.*</urlBase>" | cut -d ">" -f 2 | cut -d "<" -f 1)$picRes$picExt
 
     # $picName contains the filename of the Bing pic of the day
-    picName=${picURL#*2f}
+    picName=$(basename $picURL)
 
     # Download the Bing pic of the day
     curl -s -o $saveDir$picName $picURL
@@ -135,11 +143,16 @@ while true; do
     if [[ $DE = "kde" ]]; then
     test -e /usr/bin/xdotool || sudo zypper --no-refresh install xdotool
     test -e /usr/bin/gettext || sudo zypper --no-refresh install gettext-runtime
-    ./kde4_set_wallpaper.sh $saveDir$picName
+    # it's okay to use readlink here since it is kde and not Mac
+    $(dirname $(readlink -f $0))/kde4_set_wallpaper.sh $saveDir$picName
+    fi
+
+    if [[ x"$DE" = x"quartz" ]]; then
+      osascript -e "tell application \"Finder\" to set desktop picture to POSIX file \"$saveDir$picName\""
     fi
     
     NOW=$(date +%s)
-    SLEEP=`echo $TOMORROW-$NOW|bc`
+    SLEEP=$(($TOMORROW - $NOW))
     sleep $SLEEP
 done
 # Exit the script
