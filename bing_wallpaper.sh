@@ -128,6 +128,11 @@ while true; do
     # Test if it's a pic
     file $saveDir$picName | grep HTML && rm -rf $saveDir$picName && continue
 
+    if [ ! -s $saveDir$picName ]; then
+        rm -f $saveDir$picName
+        continue
+    fi
+
     break
     done
     detectDE 
@@ -145,6 +150,10 @@ while true; do
     test -e /usr/bin/gettext || sudo zypper --no-refresh install gettext-runtime
     # it's okay to use readlink here since it is kde and not Mac
     $(dirname $(readlink -f $0))/kde4_set_wallpaper.sh $saveDir$picName
+    # This directory always points to today's picture, so that slideshow
+    # will keep it updated?
+    mkdir -p $saveDir/Today
+    ln -sf $saveDir$picName $saveDir/Today/today$picExt
     fi
 
     if [[ x"$DE" = x"quartz" ]]; then
